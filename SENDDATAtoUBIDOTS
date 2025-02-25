@@ -1,0 +1,37 @@
+from pymongo import MongoClient
+import requests
+import time
+
+# Koneksi ke MongoDB
+MONGO_URI = "mongodb+srv://BagasRizky:bakwanR12@cluster0.pkpr8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+client = MongoClient(MONGO_URI)
+db = client["sensor_db"]  
+collection = db["sensor_data"]  
+
+# Token dan URL Ubidots
+UBIDOTS_URL = "http://industrial.api.ubidots.com/api/v1.6/devices/dht11"
+HEADERS = {
+    "X-Auth-Token": "BBUS-5BefsoApCrnt2NxBCaqI0HswJ7nMyE",
+    "Content-Type": "application/json"
+}
+
+# Looping untuk mengirim data setiap 4 detik
+while True:
+    latest_data = collection.find_one(sort=[("_id", -1)])  # Ambil data terbaru
+
+    if latest_data:
+        ubidots_payload = {
+            "temperature": latest_data["temperature"],
+            "humidity": latest_data["humidity"],
+            "motion": latest_data["motion"]
+        }
+
+        try:
+            response = requests.post(UBIDOTS_URL, json=ubidots_payload, headers=HEADERS)
+            print("Response dari Ubidots:", response.text)
+        except Exception as e:
+            print("Gagal mengirim data ke Ubidots:", e)
+    else:
+        print("Tidak ada data di MongoDB!")
+
+    time.sleep(4)  # Tunggu 4 detik sebelum mengirim data lagi
